@@ -16,6 +16,7 @@ dependencies {
     implementation 'io.quarkus:quarkus-hibernate-validator'
     implementation 'io.quarkus:quarkus-smallrye-openapi'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation "ru.iedt.database.request:database-controller:${javaDbRequest}"
 }
 
 group "${applicationGroup}.user.management"

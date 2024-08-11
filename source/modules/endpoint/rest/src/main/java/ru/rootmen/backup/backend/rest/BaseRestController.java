@@ -1,6 +1,11 @@
 package ru.rootmen.backup.backend.rest;
 
+import static ru.rootmen.backup.backend.entity.ObjectMapper.mapper;
+
+import io.quarkus.grpc.GrpcClient;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.unchecked.Unchecked;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
@@ -9,6 +14,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.eclipse.microprofile.reactive.messaging.Channel;
@@ -19,6 +25,7 @@ import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import ru.iedt.database.controller.TaskDescription;
 import ru.iedt.database.controller.Utils;
+import ru.iedt.database.messaging.*;
 
 @ApplicationScoped
 public class BaseRestController {
@@ -43,12 +50,19 @@ public class BaseRestController {
   @DefaultValue("true")
   protected Boolean taskStartUrgently = true;
 
+  @RestHeader("X-Task-UUID")
+  protected UUID taskUUID;
+
   @Inject
   @Channel("ui-request-outgoing")
   Emitter<String> emitter;
 
+  @GrpcClient("request-incoming")
+  RequestIncoming requestIncoming;
+
   @ServerExceptionMapper
-  public RestResponse<String> mapException(Exception x) {
+  public RestResponse<String> mapException(RuntimeException x) {
+    x.printStackTrace();
     return RestResponse.status(
         Response.Status.BAD_REQUEST,
         String.format("{ \"error\": true, \"error_message\": \"%s\"}", x.getMessage()));
@@ -69,11 +83,16 @@ public class BaseRestController {
 
   static HashMap<String, TaskDescription> taskDescriptionHashMap = new HashMap<>();
 
-  public Uni<String> addRabbitTask(String taskName, String json) {
-    if (taskStartUrgently) {
-      return Uni.createFrom()
-          .item(UUID::randomUUID)
-          .map(
+  public Uni<UUID> getTaskUUId(String taskName, String json) {
+    return Uni.createFrom().item(() -> Objects.requireNonNullElseGet(taskUUID, UUID::randomUUID));
+  }
+
+  public Uni<UUID> addRabbitTask(String taskName, String json) {
+    Uni<UUID> uuidUni = getTaskUUId(taskName, json);
+    if (taskStartUrgently || taskUUID != null) {
+      return uuidUni
+          .onItem()
+          .transform(
               uuid -> {
                 Utils.addRabbitTaskRest(
                     emitter,
@@ -84,12 +103,12 @@ public class BaseRestController {
                     appUuid.toString(),
                     uuid.toString(),
                     json);
-                return uuid.toString();
+                return uuid;
               });
     }
-    return Uni.createFrom()
-        .item(UUID::randomUUID)
-        .map(
+    return uuidUni
+        .onItem()
+        .transform(
             uuid -> {
               String hashUuid = String.valueOf(uuid);
               taskDescriptionHashMap.put(
@@ -103,8 +122,37 @@ public class BaseRestController {
                   .map(unused -> taskDescriptionHashMap.remove(hashUuid))
                   .subscribe()
                   .with(taskDescription -> {});
-              return uuid + ":" + hashUuid;
+              return uuid;
             });
+  }
+
+  public <T> Multi<T> startGrpcTask(String taskName, String json, Class<T> tClass) {
+    Uni<UUID> task_uuid = getTaskUUId(taskName, json);
+    Multi<RequestReply> result =
+        task_uuid
+            .onItem()
+            .transformToMulti(
+                uuid ->
+                    requestIncoming.message(
+                        Request.newBuilder()
+                            .setUser(user.toString())
+                            .setSocket(socket)
+                            .setToken(token)
+                            .setTaskName(taskName)
+                            .setTaskUuid(String.valueOf(uuid))
+                            .setAppUuid(appUuid.toString())
+                            .setPayload(json)
+                            .build()));
+
+    if (tClass == Void.class) {
+      return (Multi<T>) result.toUni().replaceWithVoid();
+    } else {
+      return result
+          .onItem()
+          .transform(
+              Unchecked.function(
+                  requestReply -> mapper.readValue(requestReply.getResult(), tClass)));
+    }
   }
 
   public void startRabbitTask(String taskName, String json, String task_uuid) {
@@ -112,5 +160,5 @@ public class BaseRestController {
         emitter, user.toString(), socket, taskName, token, appUuid.toString(), task_uuid, json);
   }
 
-  static UUID appUuid = UUID.fromString("687a139a-c4bf-4968-9116-4b64839fcca4");
+  static UUID appUuid = UUID.fromString("91fa9c8e-9aa3-42ab-9192-1276d2d84446");
 }

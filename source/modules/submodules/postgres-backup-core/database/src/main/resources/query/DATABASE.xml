@@ -13,9 +13,17 @@
         <Query>
             <SQL name="main">
                 <![CDATA[
-                    SELECT *
-                    FROM DN_DATABASE.DATABASE_LIST
-                    WHERE DATABASE_UUID = ${DATABASE_UUID} ;
+                    SELECT '124'             AS DATABASE_NAME,
+                           GEN_RANDOM_UUID() AS DATABASE_UUID,
+                           GEN_RANDOM_UUID() AS DATABASE_GROUP_UUID,
+                           CURRENT_TIMESTAMP AS DATABASE_LAST_BACKUP
+
+                    UNION ALL
+                    SELECT '125'             AS DATABASE_NAME,
+                           GEN_RANDOM_UUID() AS DATABASE_UUID,
+                           GEN_RANDOM_UUID() AS DATABASE_GROUP_UUID,
+                           CURRENT_TIMESTAMP AS DATABASE_LAST_BACKUP
+
                 ]]>
             </SQL>
         </Query>

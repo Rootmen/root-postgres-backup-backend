@@ -63,8 +63,7 @@ subprojects {
     layout.buildDirectory.set(new File("${rootProject.layout.projectDirectory.asFile.getAbsolutePath()}/build${layout.getBuildDirectory().asFile.get().getAbsolutePath().replace(rootProject.layout.projectDirectory.asFile.getAbsolutePath(), "").toString().replace("\\", "/")}"))
     repositories {
         maven {
-            url "https://maven.pkg.github.com/rootmen/java-db-request"
+            url "https://rootmen:123@maven.pkg.github.com/rootmen/java-db-request"
         }
     }
 }
-

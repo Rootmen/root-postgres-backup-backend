@@ -26,6 +26,7 @@ dependencies {
     implementation project(path: ':source:modules:exception')
     implementation "ru.iedt.database.request:task-controller:${javaDbRequest}"
     implementation "ru.iedt.database.request:message-format:${javaDbRequest}"
+    implementation "ru.iedt.database.request:task-controller-grpc-incoming:${javaDbRequest}"
 }
 
 group "${applicationGroup}"

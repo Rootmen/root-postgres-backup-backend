@@ -8,6 +8,7 @@ import ru.iedt.database.request.store.QueryStoreDefinition;
 @DefinitionStore
 public class DatabaseStore extends QueryStoreDefinition {
   public static String storeName = "DATABASE";
+
   @Override
   public String getResourcePatch() {
     return "/query/DATABASE.xml";

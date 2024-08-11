@@ -21,11 +21,12 @@ dependencies {
 
     implementation 'io.quarkiverse.poi:quarkus-poi:2.0.5'
 
+    implementation 'io.quarkus:quarkus-grpc'
 
     implementation project(path: ':source:modules:exception')
     implementation project(path: ':source:modules:submodules:postgres-backup-core:entity')
 
-
+    implementation "ru.iedt.database.request:task-controller-grpc-incoming:${javaDbRequest}"
     implementation "ru.iedt.database.request:task-controller:${javaDbRequest}"
 
 

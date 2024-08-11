@@ -1,23 +1,20 @@
 package ru.rootmen.backup.backend.messaging;
 
-import static com.diogonunes.jcolor.Ansi.colorize;
 import static com.diogonunes.jcolor.Attribute.*;
 
-import com.diogonunes.jcolor.AnsiFormat;
 import io.quarkus.grpc.GrpcClient;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.tuples.Tuple2;
 import io.smallrye.mutiny.unchecked.Unchecked;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.json.JsonObject;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import ru.iedt.database.controller.Controller;
 import ru.iedt.database.controller.TaskDescription;
 import ru.iedt.database.controller.Utils;
+import ru.iedt.database.message.format.GenericMessageWriter;
 import ru.iedt.database.message.format.MessageUtils;
 import ru.iedt.database.messaging.WebsocketMessage;
 import ru.iedt.database.messaging.WebsocketRequest;
@@ -29,51 +26,12 @@ public class RabbitMessageIncoming {
 
   @GrpcClient WebsocketMessage websocket;
 
-  static int isPrint = 31;
-  static AnsiFormat tableHead = new AnsiFormat(GREEN_TEXT(), NONE(), NONE());
-  static AnsiFormat tableStartRow = new AnsiFormat(BLUE_TEXT(), NONE(), NONE());
-  static AnsiFormat tableFinishRow = new AnsiFormat(CYAN_TEXT(), NONE(), NONE());
-  static DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss SSS");
-
   @Incoming("ui-request-incoming")
   public Uni<Void> consumeTask(Message<JsonObject> payload) {
     TaskDescription task = null;
-    // TODO КОГДА-ТО ЗДЕСЬ БУДЕТ НОРМАЛЬНЫЙ ЛОГГЕР
-    // нормальный значит с зелеными и красными логами!
-    isPrint++;
-    if (isPrint > 30) {
-      System.out.printf(
-          "%-50s| %-25s| %-50s| %-40s| %-50s| %-50s| %-200s\n",
-          colorize("Время", tableHead),
-          colorize("Тип задачи", tableHead),
-          colorize("UUID задачи", tableHead),
-          colorize("Название задачи", tableHead),
-          colorize("UUID пользователя", tableHead),
-          colorize("Сокет подключения", tableHead),
-          colorize("Данные", tableHead));
-      isPrint = 0;
-    }
     try {
       task = Utils.parseMessageFromRest(payload);
-      System.out.printf(
-          "%-50s| %-25s| %-50s| %-40s| %-50s| %-50s| %-200s\n",
-          colorize(dateFormat.format(new Date()), tableStartRow),
-          colorize("Запуск", tableStartRow),
-          colorize(task.task_id.toString(), tableStartRow),
-          colorize(
-              task.task_name.length() > 30
-                  ? task.task_name.substring(0, 27) + "..."
-                  : task.task_name,
-              tableStartRow),
-          colorize(task.user_id.toString(), tableStartRow),
-          colorize(
-              task.socket.length() > 38 ? task.socket.substring(0, 38) + "..." : task.socket,
-              tableStartRow),
-          colorize(
-              task.task_data.length() > 199
-                  ? task.task_data.substring(0, 190) + "..."
-                  : task.task_data,
-              tableStartRow));
+      Logger.logger(task, "Запуск");
       if (task.isCorrect()) {
         TaskDescription finalTask = task;
         return websocket
@@ -87,22 +45,39 @@ public class RabbitMessageIncoming {
                     .setPayload(MessageUtils.INIT_MESSAGE)
                     .build())
             .onItem()
-            .transformToUni(u -> controller.runTask(finalTask.task_name, finalTask, websocket))
+            .transformToUni(
+                u -> controller.runTaskSynchronous(finalTask.task_name, finalTask, websocket))
+            .onItem()
+            .transformToUni(
+                returnTaskType -> {
+                  if (returnTaskType.isDeprecated()) {
+                    return null;
+                  }
+                  if (returnTaskType.isSingle()) {
+                    return GenericMessageWriter.sendMessagesFromUni(
+                            returnTaskType.getUni(),
+                            websocket,
+                            finalTask,
+                            GenericMessageWriter.TARGET_SOCKET)
+                        .replaceWithVoid();
+                  }
+                  return GenericMessageWriter.sendMessagesFromMulti(
+                          Uni.createFrom()
+                              .item(
+                                  () ->
+                                      Tuple2.of(
+                                          returnTaskType.getSize(), returnTaskType.getMulti())),
+                          websocket,
+                          finalTask,
+                          GenericMessageWriter.TARGET_SOCKET)
+                      .replaceWithVoid();
+                })
             .onItem()
             .transform(unused -> payload.ack())
             .onItem()
             .transform(
                 voidCompletionStage -> {
-                  System.out.printf(
-                      "%-50s| %-25s| %-50s| %-40s\n",
-                      colorize(dateFormat.format(new Date()), tableFinishRow),
-                      colorize("Завершение", tableFinishRow),
-                      colorize(finalTask.task_id.toString(), tableFinishRow),
-                      colorize(
-                          finalTask.task_name.length() > 30
-                              ? finalTask.task_name.substring(0, 27) + "..."
-                              : finalTask.task_name,
-                          tableFinishRow));
+                  Logger.loggerFinish(finalTask, "Завершение");
                   return null;
                 })
             .replaceWithVoid()
