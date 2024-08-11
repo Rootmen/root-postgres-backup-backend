@@ -1,0 +1,57 @@
+plugins {
+    id 'java'
+    id 'io.quarkus'
+    id 'org.kordamp.gradle.jandex' version '1.1.0'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+    implementation 'io.quarkus:quarkus-reactive-pg-client'
+    implementation 'io.quarkus:quarkus-resteasy-reactive'
+    implementation 'io.quarkus:quarkus-hibernate-validator'
+    implementation 'io.quarkus:quarkus-smallrye-openapi'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+}
+
+group "${applicationGroup}.user.management"
+version "${applicationVersion}"
+
+tasks.configureEach { task ->
+    if (task.name == "quarkusDev") {
+        task.enabled = (target == project.name)
+    }
+}
+tasks.named('compileTestJava') {
+    dependsOn 'jandex'
+}
+
+tasks.named('test') {
+    dependsOn 'jandex'
+}
+
+tasks.named('quarkusDependenciesBuild') {
+    dependsOn 'jandex'
+}
+
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+test {
+    systemProperty "java.util.logging.manager", "org.jboss.logmanager.LogManager"
+}
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}

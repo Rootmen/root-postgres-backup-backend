@@ -1,0 +1,22 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+        mavenLocal()
+    }
+    plugins {
+        id "${quarkusPluginId}" version "${quarkusPluginVersion}"
+    }
+}
+
+rootProject.name = 'root-postgres-backup-backend'
+include ':source:modules:exception'
+//endpoint
+include ':source:modules:endpoint:rest'
+include ':source:modules:endpoint:task-runner'
+include ':source:modules:endpoint:websocket'
+//postgres-backup-core
+include ':source:modules:submodules:postgres-backup-core:database'
+include ':source:modules:submodules:postgres-backup-core:entity'
+include ':source:modules:submodules:postgres-backup-core:service'
+

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Definition parser="v3">
+    <Templates>
+        <Template ID="SCHEMA_NAME">
+            <![CDATA[DATABASE]]>
+        </Template>
+    </Templates>
+
+    <QuerySet ID="GET_DATABASE">
+        <Parameters>
+            <Parameter name="DATABASE_UUID" type="uuid"/>
+        </Parameters>
+        <Query>
+            <SQL name="main">
+                <![CDATA[
+                    SELECT *
+                    FROM DN_DATABASE.DATABASE_LIST
+                    WHERE DATABASE_UUID = ${DATABASE_UUID} ;
+                ]]>
+            </SQL>
+        </Query>
+    </QuerySet>
+
+
+</Definition>

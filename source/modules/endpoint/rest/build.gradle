@@ -1,0 +1,61 @@
+ plugins {
+    id 'java'
+    id 'io.quarkus'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+    implementation 'io.quarkus:quarkus-reactive-pg-client'
+    implementation 'io.quarkus:quarkus-arc'
+    implementation 'io.quarkus:quarkus-jackson'
+    implementation 'io.quarkus:quarkus-resteasy-reactive'
+    implementation 'io.quarkus:quarkus-hibernate-validator'
+    implementation 'io.quarkus:quarkus-resteasy-reactive-jackson'
+    implementation 'io.quarkus:quarkus-smallrye-reactive-messaging-rabbitmq'
+    implementation 'io.quarkus:quarkus-smallrye-openapi'
+
+    implementation 'io.quarkiverse.poi:quarkus-poi:2.0.5'
+
+
+    implementation project(path: ':source:modules:exception')
+    implementation project(path: ':source:modules:submodules:postgres-backup-core:entity')
+
+
+    implementation "ru.iedt.database.request:task-controller:${javaDbRequest}"
+
+
+    testImplementation 'io.quarkus:quarkus-junit5'
+    testImplementation 'io.rest-assured:rest-assured'
+}
+
+group "${applicationGroup}"
+version "${applicationVersion}"
+
+tasks.configureEach { task ->
+    if (task.name == "quarkusDev") {
+        task.enabled = (target == project.name)
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+test {
+    systemProperty "java.util.logging.manager", "org.jboss.logmanager.LogManager"
+}
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}

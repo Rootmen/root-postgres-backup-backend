@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+    id 'io.quarkus'
+    id "com.diffplug.spotless" version "6.23.3"
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+quarkusDev.enabled = false
+quarkusAppPartsBuild.enabled = false
+
+group "${applicationGroup}"
+version "${applicationVersion}"
+
+dependencies {
+    //--------------------quarkus----------------------------------------------------------------------------
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+}
+
+spotless {
+    format 'misc', {
+        target '**/*.gradle', '**/*.md', '**/.gitignore'
+        indentWithSpaces()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format 'xml', {
+        target 'src/**/*.xml'
+        indentWithSpaces()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    java {
+        target "**/*.java"
+        cleanthat()
+        importOrder('java|javax', 'com.acme', '', '\\#com.acme', '\\#')
+        toggleOffOn()
+        formatAnnotations()
+        googleJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        indentWithSpaces()
+        endWithNewline()
+    }
+}
+
+
+subprojects {
+    repositories {
+        maven {
+            allowInsecureProtocol = true
+            url "http://gitlabrunner.iedt.com.rzd:8080/releases"
+        }
+    }
+}
+
+layout.buildDirectory.set(layout.projectDirectory.dir("./build/root/build"))
+
+subprojects {
+    layout.buildDirectory.set(new File("${rootProject.layout.projectDirectory.asFile.getAbsolutePath()}/build${layout.getBuildDirectory().asFile.get().getAbsolutePath().replace(rootProject.layout.projectDirectory.asFile.getAbsolutePath(), "").toString().replace("\\", "/")}"))
+    repositories {
+        maven {
+            url "https://maven.pkg.github.com/rootmen/java-db-request"
+        }
+    }
+}
+

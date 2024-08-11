@@ -1,0 +1,63 @@
+plugins {
+    id 'java'
+    id 'io.quarkus'
+    id 'org.kordamp.gradle.jandex' version '1.1.0'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'io.quarkus:quarkus-reactive-pg-client'
+    implementation 'io.quarkus:quarkus-arc'
+    implementation "ru.iedt.database.request:structures:${javaDbRequest}"
+    implementation "ru.iedt.database.request:store:${javaDbRequest}"
+    implementation "ru.iedt.database.request:database-controller:${javaDbRequest}"
+    implementation project(path: ':source:modules:exception')
+    implementation project(path: ':source:modules:submodules:postgres-backup-core:entity')
+
+    testImplementation 'io.quarkus:quarkus-junit5'
+
+}
+
+group "${applicationGroup}"
+version "${applicationVersion}"
+
+tasks.configureEach { task ->
+    if (task.name == "quarkusDev") {
+        task.enabled = (target == project.name)
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.named('compileTestJava') {
+    dependsOn 'jandex'
+}
+
+tasks.named('test') {
+    dependsOn 'jandex'
+}
+
+tasks.named('quarkusDependenciesBuild') {
+    dependsOn 'jandex'
+}
+
+test {
+    systemProperty "java.util.logging.manager", "org.jboss.logmanager.LogManager"
+}
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}
